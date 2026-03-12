@@ -1,1 +1,6 @@
-
+Network Configuration
+Subnet: 192.168.1.0/24
+Gateway: Arch Laptop Ethernet IP → 192.168.1.105
+Proxmox Node: 192.168.1.101
+Arch Laptop: 192.168.1.105
+Pi-hole DNS: 192.168.1.150 (primary), 1.1.1.1 (secondary – Cloudflare)
