@@ -1,1 +1,55 @@
+Proxmox Setup
+
+To check setting in proxmox pc
+The BIOS.** Before installing Proxmox, restart the HP and tap **F10**. Go to **Advanced > Slot Settings** or **Virtualization** and ensure **Intel VT-x** and **VT-d** are "Enabled." Without this, VMs won't start
+
+Laptop, here is how to apply those exact settings.
+
+To keep your network clean, we will use the `192.168.1.0/24` subnet.
+
+-IP :192.168.1.101
+- Gateway : 192.168.1.105
+- Subnet Mask:255.255.255.0 (which is `/24`)
+- **Gateway:Arch Ethernet IP** (`192.168.1.105`) as the gateway for the PC, since the laptop is the one providing the Wi-Fi bridge.
+- Pi-hole DNS: 192.168.150 and secondary 1.1.1.1 (Cloudflare).
+
+
+Since I'm using **NetworkManager** on Arch, Instead, manually adding ip addr you should use `nmcli` (command line) to make these settings permanent.
+
+Here is how to set up your specific IP schema (`192.168.1.105`) and ensure your laptop acts as the "Internet Provider" for my Proxmox server.
+
+### 1. Configure the Static IP on Arch
+
+Assuming your ethernet interface is named `enp2s0` (check with `ip link`), run these commands:
+
+Bash
+
+```
+# Create a profile named 'Lab-Link' with your static IP
+sudo nmcli con add type ethernet con-name Lab-Link ifname enp2s0 ip4 192.168.1.105/24 gw4 192.168.1.1
+
+# Set the DNS
+sudo nmcli con mod Lab-Link ipv4.dns "192.168.1.150 and secondary dns 1,1.1.1.1"
+
+# Set the method to manual (static)
+sudo nmcli con mod Lab-Link ipv4.method manual
+
+# Bring the connection up
+sudo nmcli con up Lab-Link
+
+### 2. Share Wi-Fi Internet to Ethernet
+
+To allow your Proxmox PC (at `192.168.1.101`) to get internet through your laptop's Wi-Fi, you can use the built-in "Shared" mode in NetworkManager.
+This automatically handles the NAT and IP forwarding for you.
+
+**To do this via the interface (Easiest):**
+
+1. Run `nmtui`.
+    
+2. Go to **Edit a connection**.
+    
+3. Select your Ethernet profile.
+    
+4. Set **IPv4 CONFIGURATION** to `<Shared>`.
+    
 
