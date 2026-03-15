@@ -5,12 +5,66 @@
     ProDesk --> SnipeIT[LXC: Snipe-IT Asset Mgmt]
     ProDesk --> HA[VM: ubuntu server ]
 
+Ip addr show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute
+       valid_lft forever preferred_lft forever
+2: enp0s31f6: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 10:62:e5:ed:c1:52 brd ff:ff:ff:ff:ff:ff
+     inet 192.168.1.105/24 brd 192.168.1.255 scope global noprefixroute enp0s31f6
+       valid_lft forever preferred_lft forever
+    inet6 fe80::1262:e5ff:feed:c152/64 scope link proto kernel_ll
+       valid_lft forever preferred_lft forever
+4: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 74:70:fd:ee:0c:00 brd ff:ff:ff:ff:ff:ff
+    inet 10.XXX.XXX.XXX/24 brd 10.XXX.XXX.XXX scope global dynamic noprefixroute wlan0
+       valid_lft 3044sec preferred_lft 3044sec
+    i
+5: tailscale0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1280 qdisc fq_codel state UNKNOWN group default qlen 500
+    link/none
+    inet 100.XXX.XX.xxx/32 scope global tailscale0
+       valid_lft forever preferred_lft forever
+  
 
 ## Enable IPv4 forwarding
 sudo sysctl -w net.ipv4.ip_forward=1
 
-### NAT configurationMASQUERADE traffic from Proxmox nodes to Wi-Fi
+To check run the following cmd and result 1. 
+`$ cat /proc/sys/net/ipv4/ip_forward
+1
+
+### NAT configuration MASQUERADE traffic 
+enp0s31f6 = 192.168.1.105  ← LAN side (ethernet to Nokia switch)
+wlan0     = 10.133.213.219  ← WAN side (mobile hotspot internet)
+
+enables using iptables
 sudo iptables -t nat -A POSTROUTING -o wlan0 -j MASQUERADE
+
+Check results and you will get results
+MASQUERADE  all  --  *  wlan0  0.0.0.0/0  0.0.0.0/0
+
+detail check run the below command in Konsole
+[arch ~]$ sudo iptables -t nat -L -n -v
+Chain PREROUTING (policy ACCEPT 2404 packets, 198K bytes)
+ pkts bytes target     prot opt in     out     source               destination
+
+Chain INPUT (policy ACCEPT 1704 packets, 97149 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+
+Chain OUTPUT (policy ACCEPT 2875 packets, 193K bytes)
+ pkts bytes target     prot opt in     out     source               destination
+
+Chain POSTROUTING (policy ACCEPT 1611 packets, 105K bytes)
+ pkts bytes target          prot opt in     out     source           destination
+ 2813  188K ts-postrouting  all  --  *      *       0.0.0.0/0        0.0.0.0/0
+ 1260 86716 MASQUERADE      all  --  *      wlan0   0.0.0.0/0        0.0.0.0/0
+
+Chain ts-postrouting (1 references)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 MASQUERADE  all  --  *      *       0.0.0.0/0            0.0.0.0/0            mark match 0x40000/0xff0000
 
 Optional:
 Tailscale VPN for remote access
