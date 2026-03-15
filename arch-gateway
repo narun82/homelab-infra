@@ -64,4 +64,50 @@ Static IP on interface ✓
 DHCP server for connected devices ✓
 NAT/forwarding ✓
 
-One tool, zero conflicts, already installed.
+systemctl status NetworkManager | head -3
+systemctl status systemd-networkd | head -3
+systemctl status systemd-resolved | head -3
+systemctl status dnsmasq | head -3
+```
+
+** Output:**
+```
+NetworkManager  → active (running)   ✓
+systemd-networkd→ inactive (dead)    ✓
+systemd-resolved→ active (running)   ✓
+dnsmasq         → masked             ✓
+```
+
+**Why keep systemd-resolved even though NM handles DNS?**
+
+Because NetworkManager uses systemd-resolved as its DNS backend for Arch's own name resolution. 
+If you remove it, Arch itself loses DNS — websites stop resolving on the Arch browser, pacman stops working, Tailscale breaks. The chain is:
+
+```
+Arch browser/pacman/tailscale
+        ↓
+systemd-resolved (127.0.0.53)
+        ↓
+NetworkManager tells it which DNS to use
+        ↓
+1.1.1.1 / 8.8.8.8 / hotspot DNS
+```
+
+LAN devices (Win11, Proxmox) get DNS from NetworkManager's internal dnsmasq directly — they never touch systemd-resolved.
+
+**Final clean architecture after these changes:**
+```
+Arch networking stack:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NetworkManager          = ONE tool managing everything
+  ├── interface mgmt    (wlan0, enp0s31f6)
+  ├── NAT/MASQUERADE    (iptables, ip_forward)
+  ├── internal dnsmasq  (DHCP for LAN devices)
+  └── uses systemd-resolved for Arch's own DNS
+
+systemd-networkd        = disabled (was doing nothing)
+system dnsmasq service  = masked (NM has its own)
+systemd-resolved        = kept (NM backend for Arch DNS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Result: zero conflicts, one manager, clean system
+
